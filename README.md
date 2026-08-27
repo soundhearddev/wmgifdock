@@ -25,3 +25,14 @@ nix develop # for development environment
 ``` sh
 wmgifdock
 ```
+| Option          | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `-e <gif_file>` | Path to the GIF file                                               |
+| `-t <speed>`    | Animation speed (`0.5` = 2× faster, `1` = normal, `2` = 2× slower) |
+| `-s <size>`     | Window size in pixels (`16–256`, default: `64`)                    |
+| `-h`            | Display help                                                       |
+
+### example:
+``` sh
+wmgifdock -e animation.gif -t 2 -s 96
+```

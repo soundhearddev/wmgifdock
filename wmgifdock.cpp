@@ -82,7 +82,6 @@ void WMWindowDock::parseCmLine(int argc, char **argv)
 
 void WMWindowDock::filesGetter()
 {
-    // GIF muss direkt eine Datei sein
     if (checkIfDirectory(filename))
     {
         exit(1);
@@ -157,7 +156,6 @@ void WMWindowDock::openXup(int argc, char **argv)
     XFlush (mDisplay);
 }
 
-// Optimierte Pixel-Konvertierung
 inline void convert_rgba_to_argb(const unsigned char *src, uint32_t *dst, size_t pixels)
 {
     for (size_t i = 0; i < pixels; i++)
@@ -203,7 +201,6 @@ void WMWindowDock::DisplayImage()
         return;
     }
 
-    // FRAME CACHING: Lade alle Frames beim Start
     std::vector<CachedFrame> frames;
 
     for (size_t f = 0; f < frame_count; f++)
@@ -216,7 +213,6 @@ void WMWindowDock::DisplayImage()
         if (delay == 0)
             delay = 4;
 
-        // Allocate und export pixels
         unsigned char *pixels = (unsigned char *)malloc(width * height * 4);
         if (!pixels)
             continue;
@@ -236,7 +232,6 @@ void WMWindowDock::DisplayImage()
         frames.push_back(cf);
     }
 
-    // Cleanup MagickWand - nicht mehr nötig
     DestroyMagickWand(mw);
     MagickWandTerminus();
 
@@ -264,7 +259,6 @@ void WMWindowDock::DisplayImage()
         return;
     }
 
-    // Animation loop - endlos, mit gecachten Frames
     while (true)
     {
         for (size_t frame_idx = 0; frame_idx < frames.size(); frame_idx++)
@@ -316,7 +310,6 @@ void WMWindowDock::DisplayImage()
         }
     }
 
-    // Cleanup (unreachable - Endlosschleife oben; hier nur der Vollständigkeit halber)
     imlib_free_image();
     for (auto& f : frames)
         free(f.pixels);
