@@ -20,14 +20,6 @@ nix build      # output: ./result/bin/wmgifdock
 nix develop # for development environment
 ```
 
-
-## Dependencies
-
-- libX11, libXext, libXpm
-- imlib2
-- imagemagick
-- boost (build only)
-
 ## Usage
 
 ``` sh
