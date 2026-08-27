@@ -2,9 +2,7 @@
 
 This is a fork of wmimagedock.
 
-<video controls>
-  <source src="./example.mp4" type="video/mp4">
-</video>
+<video src="./example.mp4" controls></video>
 
 ## Build
 Requirements: `pkgconf` `libx11` `libxext` `libxpm` `imlib2` `imagemagick` `boost`
