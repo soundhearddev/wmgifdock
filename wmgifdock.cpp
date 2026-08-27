@@ -308,7 +308,7 @@ int WMWindowDock::load_err_image(std::string path)
 
 void WMWindowDock::usage(char **argv)
 {
-    std::cout<<std::endl<<APPNAME<<" "<<VERSION<<" "<<COPYRIGHT<<" "<<AUTHOR<<std::endl<<std::endl
+    std::cout<<std::endl<<APPNAME<<" "<<VERSION<<std::endl<<std::endl
     <<"GIF Animation Player for Dock"<<std::endl<<std::endl
     <<argv[0]<<" -e <gif_file>     : Path to GIF file to play"<<std::endl
     <<argv[0]<<" -t <speed>        : Speed (0.5=2x faster, 1=normal, 2=2x slower)"<<std::endl

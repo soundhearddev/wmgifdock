@@ -21,9 +21,9 @@ pkgs.stdenv.mkDerivation {
 
   # Runtime dependencies
   propagatedBuildInputs = with pkgs; [
-    xorg.libX11
-    xorg.libXext
-    xorg.libXpm
+    libX11
+    libXext
+    libXpm
     imlib2
     imagemagick
   ];
