@@ -3,19 +3,23 @@
 This is a fork of wmimagedock.
 
 ## Build
+Requirements: `pkgconf` `libx11` `libxext` `libxpm` `imlib2` `imagemagick` `boost`
 
-Classic:
+For Legacy Distros:
 
-```
-make clean && make
+``` sh
+make
 ```
 
 Nix:
 
+``` sh
+nix build      # output: ./result/bin/wmgifdock
+
+# optionally:
+nix develop # for development environment
 ```
-nix build      # -> result/bin/wmgifdock
-nix develop    # dev shell with all deps
-```
+
 
 ## Dependencies
 
@@ -26,6 +30,6 @@ nix develop    # dev shell with all deps
 
 ## Usage
 
-```
+``` sh
 wmgifdock
 ```

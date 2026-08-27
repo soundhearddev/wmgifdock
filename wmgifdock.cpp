@@ -189,10 +189,10 @@ void WMWindowDock::DisplayImage()
         MagickWandTerminus();
         return;
     }
-    
+
     MagickWand *coalesced = MagickCoalesceImages(mw);
-DestroyMagickWand(mw);
-mw = coalesced;
+    DestroyMagickWand(mw);
+    mw = coalesced;
 
     size_t frame_count = MagickGetNumberImages(mw);
 
