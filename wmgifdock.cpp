@@ -166,6 +166,10 @@ inline void convert_rgba_to_argb(const unsigned char *src, uint32_t *dst, size_t
         uint32_t g = src[i * 4 + 1];
         uint32_t b = src[i * 4 + 2];
         uint32_t a = src[i * 4 + 3];
+        // premultiply
+        r = (r * a) / 255;
+        g = (g * a) / 255;
+        b = (b * a) / 255;
         dst[i] = (a << 24) | (r << 16) | (g << 8) | b;
     }
 }
@@ -185,6 +189,10 @@ void WMWindowDock::DisplayImage()
         MagickWandTerminus();
         return;
     }
+    
+    MagickWand *coalesced = MagickCoalesceImages(mw);
+DestroyMagickWand(mw);
+mw = coalesced;
 
     size_t frame_count = MagickGetNumberImages(mw);
 
