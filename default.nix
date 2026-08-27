@@ -5,10 +5,15 @@ pkgs.stdenv.mkDerivation {
   src = ./.;
 
   buildInputs = with pkgs; [
-    gcc gnumake pkg-config
-    xorg.libX11 xorg.libXext xorg.libXpm
-    imlib2 imagemagick
-    boost  # Nur zum compilieren nötig
+    gcc
+    gnumake
+    pkg-config
+    libX11
+    libXext
+    libXpm
+    imlib2
+    imagemagick
+    boost # Nur zum compilieren nötig
   ];
 
   buildPhase = "make clean && make";
@@ -16,7 +21,10 @@ pkgs.stdenv.mkDerivation {
 
   # Runtime dependencies
   propagatedBuildInputs = with pkgs; [
-    xorg.libX11 xorg.libXext xorg.libXpm
-    imlib2 imagemagick
+    xorg.libX11
+    xorg.libXext
+    xorg.libXpm
+    imlib2
+    imagemagick
   ];
 }
