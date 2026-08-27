@@ -1,30 +1,47 @@
-{ pkgs ? import <nixpkgs> { } }:
+{
+  lib,
+  stdenv,
+  gcc,
+  gnumake,
+  pkg-config,
+  libX11,
+  libXext,
+  libXpm,
+  imlib2,
+  imagemagick,
+  boost,
+}:
+stdenv.mkDerivation {
+  pname = "wmgifdock";
+  version = "0.1.0";
 
-pkgs.stdenv.mkDerivation {
-  name = "wmgifdock";
   src = ./.;
 
-  buildInputs = with pkgs; [
+  nativeBuildInputs = [
     gcc
     gnumake
     pkg-config
+  ];
+
+  buildInputs = [
     libX11
     libXext
     libXpm
     imlib2
     imagemagick
-    boost # Nur zum compilieren nötig
+    boost
   ];
 
   buildPhase = "make clean && make";
-  installPhase = "mkdir -p $out/bin && cp wmgifdock $out/bin/";
 
-  # Runtime dependencies
-  propagatedBuildInputs = with pkgs; [
-    libX11
-    libXext
-    libXpm
-    imlib2
-    imagemagick
-  ];
+  installPhase = ''
+    mkdir -p $out/bin
+    cp wmgifdock $out/bin/
+  '';
+
+  meta = {
+    description = "GIF dock for windowmaker";
+    platforms = lib.platforms.linux;
+    mainProgram = "wmgifdock";
+  };
 }
