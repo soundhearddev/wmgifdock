@@ -43,7 +43,27 @@ void WMWindowDock::parseCmLine(int argc, char **argv)
             }
             else if (!strcmp(argv[i], "-e"))
             {
+                if ( argv[i+1] == NULL)
+                {
+                    usage(argv);
+                    exit(0);
+                }
                 filename = argv[++i];
+            }
+            else if (!strcmp(argv[i], "-s"))
+            {
+                if ( argv[i+1] == NULL)
+                {
+                    usage(argv);
+                    exit(0);
+                }
+                int size = atoi(argv[++i]);
+                if (size >= 16 && size <= 256)
+                    custom_size = size;
+                else
+                {
+                    std::cout << "Size must be between 16 and 256, using default 64." << std::endl;
+                }
             }
             else if (!strcmp(argv[i], "-h") )
             {
@@ -82,14 +102,17 @@ void WMWindowDock::openXup(int argc, char **argv)
     // Get root window
     mRoot = RootWindow(mDisplay, DefaultScreen(mDisplay));
 
+    // Use custom size if set, otherwise use default 64
+    int size = (custom_size > 0) ? custom_size : 64;
+
     // Create windows
-    mAppWin = XCreateSimpleWindow(mDisplay, mRoot, 1, 1, 64, 64, 1, 1 , 0);
-    mIconWin = XCreateSimpleWindow(mDisplay, mAppWin, 0, 0, 64, 64, 0, 0, 0);
+    mAppWin = XCreateSimpleWindow(mDisplay, mRoot, 1, 1, size, size, 1, 1 , 0);
+    mIconWin = XCreateSimpleWindow(mDisplay, mAppWin, 0, 0, size, size, 0, 0, 0);
     gc=XCreateGC(mDisplay, mIconWin, 0,0);
     //create display pixmap
     screen = XDefaultScreen(mDisplay);
     depth = DefaultDepth(mDisplay,screen );
-    pix = XCreatePixmap(mDisplay, mRoot, 64, 64, depth);
+    pix = XCreatePixmap(mDisplay, mRoot, size, size, depth);
 
     // Set classhint
     classHint.res_name =  const_cast<char*>(wInstanceName);
@@ -150,11 +173,12 @@ inline void convert_rgba_to_argb(const unsigned char *src, uint32_t *dst, size_t
 void WMWindowDock::DisplayImage()
 {
     std::string fpath = filename;
+    int size = (custom_size > 0) ? custom_size : 64;
 
     // Initialize MagickWand
     MagickWandGenesis();
     MagickWand *mw = NewMagickWand();
-    
+
     if (MagickReadImage(mw, fpath.c_str()) == MagickFalse)
     {
         DestroyMagickWand(mw);
@@ -173,7 +197,7 @@ void WMWindowDock::DisplayImage()
 
     // FRAME CACHING: Lade alle Frames beim Start
     std::vector<CachedFrame> frames;
-    
+
     for (size_t f = 0; f < frame_count; f++)
     {
         MagickSetIteratorIndex(mw, f);
@@ -223,7 +247,7 @@ void WMWindowDock::DisplayImage()
     imlib_context_set_anti_alias(0);
 
     // Pre-allocate scaled image
-    Imlib_Image scaled = imlib_create_image(64, 64);
+    Imlib_Image scaled = imlib_create_image(size, size);
     if (!scaled)
     {
         // Cleanup frames
@@ -243,7 +267,7 @@ void WMWindowDock::DisplayImage()
             Imlib_Image img = imlib_create_image(cf.width, cf.height);
             if (!img)
                 continue;
-            
+
             imlib_context_set_image(img);
 
             // Get pixel data pointer
@@ -260,11 +284,11 @@ void WMWindowDock::DisplayImage()
 
             // Reuse scaled image
             imlib_context_set_image(scaled);
-            imlib_blend_image_onto_image(img, 1, 0, 0, cf.width, cf.height, 0, 0, 64, 64);
+            imlib_blend_image_onto_image(img, 1, 0, 0, cf.width, cf.height, 0, 0, size, size);
 
             // Render
             imlib_context_set_drawable(pix);
-            imlib_render_image_on_drawable_at_size(0, 0, 64, 64);
+            imlib_render_image_on_drawable_at_size(0, 0, size, size);
 
             // Update window
             XSetWindowBackgroundPixmap(mDisplay, mIconWin, pix);
@@ -276,7 +300,7 @@ void WMWindowDock::DisplayImage()
             imlib_free_image();
 
             // Sleep
-            unsigned long delay_ns = (unsigned long)cf.delay * 10 * 1000 * 1000 * stime;
+            unsigned long delay_ns = (unsigned long)(cf.delay * 10 * 1000 * 1000 * stime);
             struct timespec ts;
             ts.tv_sec = delay_ns / 1000000000;
             ts.tv_nsec = delay_ns % 1000000000;
@@ -284,7 +308,7 @@ void WMWindowDock::DisplayImage()
         }
     }
 
-    // Cleanup
+    // Cleanup (unreachable - Endlosschleife oben; hier nur der Vollständigkeit halber)
     imlib_free_image();
     for (auto& f : frames)
         free(f.pixels);
@@ -312,5 +336,6 @@ void WMWindowDock::usage(char **argv)
     <<"GIF Animation Player for Dock"<<std::endl<<std::endl
     <<argv[0]<<" -e <gif_file>     : Path to GIF file to play"<<std::endl
     <<argv[0]<<" -t <speed>        : Speed (0.5=2x faster, 1=normal, 2=2x slower)"<<std::endl
+    <<argv[0]<<" -s <size>         : Window size in pixels (16-256, default 64)"<<std::endl
     <<argv[0]<<" -h                : Display this help"<<std::endl<<std::endl;
 }

@@ -39,8 +39,9 @@ class WMWindowDock
     int depth;
     int width;
     int height;
-    size_t stime;
+    float stime;
     int isize;
+    int custom_size;
 
     char *Geometry;
 
@@ -56,8 +57,9 @@ public:
         depth = 0;
         width = 64;
         height = 64;
-        stime = 350;
+        stime = 1.0f;
         isize = 56;
+        custom_size = 0;
         borderwidth = 1;
         displayName = NULL;
         Geometry  = NULL;//"";
@@ -78,7 +80,7 @@ public:
     inline Window getAppWin() { return mAppWin; }
     inline Pixmap getPixMap() { return pix; }
     inline GC getGC() { return gc; }
-    inline int getStime() { return stime; }
+    inline float getStime() { return stime; }
     inline int getWidth() { return width; }
     inline int getHeight() { return height; }
     inline int getIsize() { return isize; }
