@@ -2,7 +2,7 @@
 
 This is a fork of wmimagedock.
 
-<video src="./example.mp4" controls></video>
+https://github.com/user-attachments/assets/38255974-24b3-40ef-b956-be42adff91d5
 
 ## Build
 Requirements: `pkgconf` `libx11` `libxext` `libxpm` `imlib2` `imagemagick` `boost`
@@ -26,6 +26,9 @@ nix develop # for development environment
 
 ``` sh
 wmgifdock
+
+
+
 ```
 | Option          | Description                                                        |
 | --------------- | ------------------------------------------------------------------ |
