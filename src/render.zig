@@ -11,7 +11,7 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
     const size = opts.size();
 
     // Frames bereits in Zielgröße (size x size) und fertigem ARGB laden
-    var loaded = try imagefiles.loadAllFrames(allocator, io_instance, opts.filename, size);
+    var loaded = try imagefiles.loadAllFrames(allocator, io_instance, opts.filename, @intCast(size));
     defer loaded.deinit(allocator);
 
     if (loaded.frames.len == 0) return error.NoFrames;
