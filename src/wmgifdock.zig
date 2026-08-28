@@ -1,5 +1,3 @@
-//! Portierung von wmgifdock.hpp/wmgifdock.cpp.
-
 const std = @import("std");
 const c = @import("c.zig").c;
 const imagefiles = @import("imagefiles.zig");
@@ -18,7 +16,6 @@ pub const Options = struct {
     filename: []const u8 = "",
     /// Geschwindigkeitsfaktor: 0.5 = 2x schneller, 1 = normal, 2 = 2x langsamer.
     speed: f32 = default_speed,
-    /// 0 bedeutet "nicht gesetzt", dann wird default_size verwendet.
     custom_size: c_int = 0,
 
     pub fn size(self: Options) c_int {
@@ -27,17 +24,9 @@ pub const Options = struct {
 };
 
 pub const ParseError = error{
-    ShowUsage, // "-h" oder Fehler in der Kommandozeile: usage() ausgeben und beenden
+    ShowUsage,
 };
 
-/// Portierung von WMWindowDock::parseCmLine(). QoL-Verbesserungen ggue. dem
-/// Original:
-///   - "-t" ohne Angabe: Default 1.0 (war vorher auch schon so, jetzt mit
-///     Meldung bei ungueltigem statt nur bei <= 0 stillem Fallback)
-///   - "-e" ist jetzt wirklich Pflicht (wurde vorher erst spaeter beim
-///     Datei-Zugriff unklar sichtbar)
-///   - Datei-Existenzcheck ist strikter (checkIfFile statt nur
-///     "kein Verzeichnis")
 pub fn parseCmLine(args: []const []const u8) ParseError!Options {
     var opts = Options{};
 
@@ -101,14 +90,10 @@ pub fn usage(prog_name: []const u8) void {
     , .{ app_name, version, prog_name, prog_name, prog_name, prog_name });
 }
 
-/// Portierung von WMWindowDock::filesGetter(). Prueft, dass die angegebene
-/// Datei existiert und eine regulaere Datei ist (kein Verzeichnis).
 pub fn filesGetter(io: std.Io, opts: Options) bool {
     return imagefiles.checkIfFile(io, opts.filename);
 }
 
-/// Haelt alle X11-Ressourcen. Entspricht den privaten Membern von
-/// WMWindowDock in wmgifdock.hpp.
 pub const XContext = struct {
     display: *c.Display,
     root: c.Window,
@@ -121,14 +106,6 @@ pub const XContext = struct {
     depth: c_int,
     delete_window: c.Atom,
 
-    /// Portierung von WMWindowDock::openXup(). Baut Withdrawn-State Dockapp
-    /// Fenster + Icon-Fenster auf, exakt wie im Original.
-    ///
-    /// `argv` wird fuer XSetCommand() durchgereicht (Session-Management: der
-    /// Window-Manager kann damit das Programm mit denselben Argumenten neu
-    /// starten). Das entspricht dem Original, wo XSetCommand(display, app_win,
-    /// argv, argc) direkt in openXup() aufgerufen wird. Der Typ [][:0]u8
-    /// entspricht exakt dem Rueckgabetyp von std.process.argsAlloc().
     pub fn open(size: c_int, argv: []const [:0]const u8) !XContext {
         const display = c.XOpenDisplay(null) orelse return error.CannotOpenDisplay;
         errdefer _ = c.XCloseDisplay(display);
@@ -143,10 +120,6 @@ pub const XContext = struct {
         const depth = c.DefaultDepth(display, screen);
         const pix = c.XCreatePixmap(display, root, @intCast(size), @intCast(size), @intCast(depth));
 
-        // Original: classHint.res_name = wInstanceName; classHint.res_class = wClassName;
-        // (in wmgifdock.hpp sind beide Strings identisch = "wmgifdock", die
-        // Zuordnung ist trotzdem semantisch exakt so uebernommen, falls die
-        // Konstanten irgendwann divergieren sollten)
         var class_hint: c.XClassHint = .{
             .res_name = @constCast(instance_name.ptr),
             .res_class = @constCast(class_name.ptr),
@@ -180,14 +153,6 @@ pub const XContext = struct {
         wm_hints.flags = c.StateHint | c.IconWindowHint | c.WindowGroupHint | c.IconPositionHint;
         _ = c.XSetWMHints(display, app_win, &wm_hints);
 
-        // Entspricht XSetCommand(display, app_win, argv, argc) im Original:
-        // Session-Manager/Window-Manager koennen damit das Programm mit den
-        // gleichen Kommandozeilenargumenten neu starten. XSetCommand erwartet
-        // char** (Array von rohen Zeigern), std.process.argsAlloc() liefert
-        // aber [][:0]u8 (Slices mit Laenge). Deshalb hier ein kurzlebiges
-        // Array reiner Pointer aufbauen -- argv.len ist typischerweise
-        // einstellig bis niedrig zweistellig, ein Stack-Array mit
-        // Kapazitaetsgrenze ist also unproblematisch.
         var argv_ptrs_buf: [64][*c]u8 = undefined;
         const argc_for_x: usize = @min(argv.len, argv_ptrs_buf.len);
         for (argv[0..argc_for_x], 0..) |arg, idx| argv_ptrs_buf[idx] = @ptrCast(@constCast(arg.ptr));

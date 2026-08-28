@@ -27,7 +27,8 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
         c.imlib_free_image();
     }
 
-    const pixel_count = @as(usize, @intCast(size)) * @as(usize, @intCast(size));
+    const size_usize: usize = @intCast(size);
+    const pixel_count = size_usize * size_usize;
 
     while (!should_exit.load(.acquire)) {
         for (loaded.frames) |frame| {
@@ -44,8 +45,9 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
 
             c.imlib_context_set_drawable(xctx.pix);
             c.imlib_render_image_on_drawable_at_size(0, 0, @intCast(size), @intCast(size));
+
             _ = c.XSetWindowBackgroundPixmap(xctx.display, xctx.icon_win, xctx.pix);
-            _ = c.XClearWindow(xctx.display, xctx.icon_win);
+            _ = c.XClearArea(xctx.display, xctx.icon_win, 0, 0, 0, 0, 1);
             _ = c.XFlush(xctx.display);
 
             const delay_ms: u64 = @intFromFloat(@round(@as(f64, @floatFromInt(frame.delay_ms)) * opts.speed));
@@ -55,14 +57,16 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
 }
 
 fn sleepInterruptible(io_instance: std.Io, total_ms: u64) !void {
-    const step_ms: u64 = 50;
     var remaining = total_ms;
+
+    const step_ms: u64 = if (total_ms > 200) 50 else 10;
+
     while (remaining > 0) {
         if (should_exit.load(.acquire)) return;
 
         const chunk = @min(remaining, step_ms);
         try io_instance.sleep(
-            .fromNanoseconds(@as(u64, chunk) * 1_000_000),
+            .fromNanoseconds(chunk * 1_000_000),
             .awake,
         );
         remaining -= chunk;
