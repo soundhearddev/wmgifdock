@@ -1,43 +1,30 @@
 # WMGifDock
 
-This is a fork of wmimagedock.
+A high-performance rewrite of **WMGifDock** (originally a fork of `wmimagedock`) written in **Zig**.
 
-https://github.com/user-attachments/assets/38255974-24b3-40ef-b956-be42adff91d5
+<video src="./example.mp4" controls></video>
+
+## Requirements
+
+* **Zig** (0.16.0)
+* `pkg-config`
+* `libX11`
+* `libXext`
+* `imlib2`
 
 ## Build
-Requirements: `pkgconf` `libx11` `libxext` `libxpm` `imlib2` `imagemagick` `boost`
 
-For Legacy Distros:
+### 1. Via Nix
 
-``` sh
-make
+```sh
+nix build # (binary is placed in ./result/bin/wmgifdock)
+
+nix develop # Enter the development environment
 ```
 
-Nix:
+### 2. Build From Source
 
-``` sh
-nix build      # output: ./result/bin/wmgifdock
-
-# optionally:
-nix develop # for development environment
-```
-
-## Usage
-
-``` sh
-wmgifdock
-
-
-
-```
-| Option          | Description                                                        |
-| --------------- | ------------------------------------------------------------------ |
-| `-e <gif_file>` | Path to the GIF file                                               |
-| `-t <speed>`    | Animation speed (`0.5` = 2× faster, `1` = normal, `2` = 2× slower) |
-| `-s <size>`     | Window size in pixels (`16–256`, default: `64`)                    |
-| `-h`            | Display help                                                       |
-
-### example:
-``` sh
-wmgifdock -e animation.gif -t 2 -s 96
+```sh
+zig build -Doptimize=ReleaseSafe 
+# (binary is placed in ./zig-out/bin/wmgifdock)
 ```

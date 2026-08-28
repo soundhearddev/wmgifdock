@@ -1,16 +1,12 @@
-{
-  lib,
-  stdenv,
-  gcc,
-  gnumake,
-  pkg-config,
-  libX11,
-  libXext,
-  libXpm,
-  imlib2,
-  imagemagick,
-  boost,
+{ lib
+, stdenv
+, zig
+, pkg-config
+, libX11
+, libXext
+, imlib2
 }:
+
 stdenv.mkDerivation {
   pname = "wmgifdock";
   version = "0.1.0";
@@ -18,29 +14,20 @@ stdenv.mkDerivation {
   src = ./.;
 
   nativeBuildInputs = [
-    gcc
-    gnumake
+    zig
     pkg-config
   ];
 
   buildInputs = [
     libX11
     libXext
-    libXpm
     imlib2
-    imagemagick
-    boost
   ];
 
-  buildPhase = "make clean && make";
-
-  installPhase = ''
-    mkdir -p $out/bin
-    cp wmgifdock $out/bin/
-  '';
-
   meta = {
-    description = "GIF dock for windowmaker";
+    description = "GIF dock app for Window Maker";
+    homepage = "https://github.com/soundhearddev/wmgifdock";
+    license = lib.licenses.gpl2Only;
     platforms = lib.platforms.linux;
     mainProgram = "wmgifdock";
   };
