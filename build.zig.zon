@@ -6,8 +6,7 @@
 
     .dependencies = .{
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/refs/heads/master.tar.gz",
-            .hash = "zigimg-0.1.0-8_eo2sPVFwAm8y-DVfaCHNKQIpv9oHl_mbcKbGQZRLrK",
+            .path = "deps/zigimg",
         },
     },
 
@@ -15,5 +14,6 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "deps/zigimg",
     },
 }

@@ -1,6 +1,5 @@
 { lib
 , stdenv
-, fetchFromGitHub
 , zig
 , pkg-config
 , libX11
@@ -33,30 +32,22 @@ stdenv.mkDerivation {
     imlib2
   ];
 
-  configurePhase = ''
-    runHook preConfigure
-
-    mkdir -p .zig-cache/p
-
-    cp -r ${zigPackages}/zigimg-* .zig-cache/p/zigimg
-
-    runHook postConfigure
-
-
+  postPatch = ''
+    export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-cache"
+    mkdir -p "$ZIG_GLOBAL_CACHE_DIR/p"
+    ln -s ${zigPackages} "$ZIG_GLOBAL_CACHE_DIR/p/dep" # oder entsprechend verknüpfen
   '';
+
 
   buildPhase = ''
     runHook preBuild
 
     zig build \
-      --global-cache-dir "$PWD/.zig-cache" \
       -j$NIX_BUILD_CORES \
       -Dcpu=baseline \
       --release=safe
 
     runHook postBuild
-
-
   '';
 
   installPhase = ''
@@ -66,8 +57,6 @@ stdenv.mkDerivation {
     cp zig-out/bin/wmgifdock $out/bin/
 
     runHook postInstall
-
-
   '';
 
   meta = {
@@ -78,3 +67,4 @@ stdenv.mkDerivation {
     mainProgram = "wmgifdock";
   };
 }
+
