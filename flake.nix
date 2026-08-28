@@ -31,14 +31,16 @@
         in
         {
           default = pkgs.mkShell {
-            inputsFrom = [
-              self.packages.${system}.wmgifdock
-            ];
-
-            packages = with pkgs; [
+            nativeBuildInputs = with pkgs; [
               zig
               zls
-              zon2nix
+              pkg-config
+            ];
+
+            buildInputs = with pkgs; [
+              libX11
+              libXext
+              imlib2
             ];
 
             shellHook = ''
@@ -53,6 +55,4 @@
         nixpkgs.legacyPackages.${system}.alejandra
       );
     };
-
-
 }
