@@ -38,6 +38,7 @@
             packages = with pkgs; [
               zig
               zls
+              zon2nix
             ];
 
             shellHook = ''
@@ -52,4 +53,6 @@
         nixpkgs.legacyPackages.${system}.alejandra
       );
     };
+
+
 }
