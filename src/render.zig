@@ -1,5 +1,3 @@
-//! Portierung von WMWindowDock::DisplayImage() und convert_rgba_to_argb() aus wmgifdock.cpp.
-
 const std = @import("std");
 const c = @import("c.zig").c;
 const imagefiles = @import("imagefiles.zig");
@@ -10,7 +8,6 @@ pub var should_exit: std.atomic.Value(bool) = std.atomic.Value(bool).init(false)
 pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wmgifdock.XContext, opts: wmgifdock.Options) !void {
     const size = opts.size();
 
-    // Frames bereits in Zielgröße (size x size) und fertigem ARGB laden
     var loaded = try imagefiles.loadAllFrames(allocator, io_instance, opts.filename, @intCast(size));
     defer loaded.deinit(allocator);
 
@@ -23,7 +20,6 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
     c.imlib_context_set_blend(0);
     c.imlib_context_set_anti_alias(0);
 
-    // Ein einziges Imlib2-Image für alle Frames erstellen und wiederverwenden
     const img = c.imlib_create_image(@intCast(size), @intCast(size));
     if (img == null) return error.ImlibCreateImageFailed;
     defer {
@@ -31,7 +27,7 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
         c.imlib_free_image();
     }
 
-    const pixel_count = @as(usize, size) * size;
+    const pixel_count = @as(usize, @intCast(size)) * @as(usize, @intCast(size));
 
     while (!should_exit.load(.acquire)) {
         for (loaded.frames) |frame| {
@@ -43,7 +39,6 @@ pub fn displayImage(allocator: std.mem.Allocator, io_instance: std.Io, xctx: *wm
 
             const imlib_pixels: [*]u32 = @ptrCast(@alignCast(imlib_pixels_ptr));
 
-            // Direktes Verpflanzen der vorberechneten 64x64 ARGB-Pixel
             @memcpy(imlib_pixels[0..pixel_count], frame.pixels[0..pixel_count]);
             c.imlib_image_put_back_data(imlib_pixels);
 

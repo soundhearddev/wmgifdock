@@ -1,5 +1,3 @@
-//! Portierung von imagefiles.cpp/imagefiles.hpp.
-
 const std = @import("std");
 const zigimg = @import("zigimg");
 const c = @import("c.zig").c;
@@ -33,9 +31,8 @@ pub fn checkIfDirectory(io: std.Io, path: []const u8) bool {
 
 pub const LoadError = anyerror;
 
-/// Ein skaliertes und premultipliziertes ARGB-Frame.
 pub const Frame = struct {
-    pixels: []u32, // Fertige ARGB32 Pixeldaten für Imlib2/X11
+    pixels: []u32,
     delay_ms: u32,
 };
 
@@ -51,12 +48,10 @@ pub const LoadedImage = struct {
     }
 };
 
-/// Schnelle Division durch 255 mittels Bitshift: (x * 257 + 257) >> 16
 inline fn div255(v: u32) u32 {
     return (v * 257 + 257) >> 16;
 }
 
-/// Konvertiert RGBA32 Pixel in premultipliziertes ARGB32 Format.
 fn convertRgbaToArgb(src: []const zigimg.color.Rgba32, dst: []u32) void {
     std.debug.assert(src.len == dst.len);
     for (src, 0..) |px, i| {
@@ -74,8 +69,6 @@ fn convertRgbaToArgb(src: []const zigimg.color.Rgba32, dst: []u32) void {
     }
 }
 
-/// Lädt das Bild, skaliert alle Frames per Imlib2 auf `target_size x target_size`
-/// und liefert premultiplizierte ARGB32-Frames zurück.
 pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []const u8, target_size: u32) LoadError!LoadedImage {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var image = try zigimg.Image.fromFilePath(allocator, io_instance, path, read_buffer[0..]);
@@ -102,7 +95,6 @@ pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []
 
     if (raw_frames.items.len == 0) return LoadError.NoFrames;
 
-    // Frames direkt auf Zielgröße skalieren & nach ARGB konvertieren
     var scaled_frames = std.ArrayList(Frame).empty;
     errdefer {
         for (scaled_frames.items) |f| allocator.free(f.pixels);
@@ -114,7 +106,6 @@ pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []
     const src_width = image.width;
     const src_height = image.height;
 
-    // Buffer für ARGB-Konvertierung vor dem Skalieren
     const src_argb = try allocator.alloc(u32, src_width * src_height);
     defer allocator.free(src_argb);
 

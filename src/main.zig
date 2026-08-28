@@ -2,9 +2,6 @@ const std = @import("std");
 const wmgifdock = @import("wmgifdock.zig");
 const render = @import("render.zig");
 
-/// Installiert SIGTERM/SIGINT-Handler, die render.should_exit setzen, damit
-/// die Animationsschleife kontrolliert beendet wird und alle defer-Bloecke
-/// (XContext.close, Frame-Freigabe etc.) noch laufen.
 fn installSignalHandlers() void {
     const sa: std.posix.Sigaction = .{
         .handler = .{ .handler = handleExitSignal },
