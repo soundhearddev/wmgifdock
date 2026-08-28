@@ -1,25 +1,11 @@
 //! Portierung von imagefiles.cpp/imagefiles.hpp.
-//!
-//! Das urspruengliche Programm konnte ganze Verzeichnisse nach Bildern
-//! durchsuchen (loadFiles, boost::filesystem::recursive_directory_iterator)
-//! und zufaellig eins auswaehlen (getRany, get_random_file). wmgifdock
-//! spielt aber nur eine einzelne Datei ab (-e <gif_file>), diese Funktionen
-//! wurden im echten Programm gar nicht mehr benutzt (main.cpp ruft nur
-//! parseCmLine -> filesGetter -> openXup -> DisplayImage auf, nie loadFiles
-//! o.ae.). Deshalb bleibt hier nur das, was main.zig tatsaechlich braucht:
-//!   - Existenz-/Typpruefung einer einzelnen Datei
-//!   - Laden eines animierten Bildes samt aller Frames via zigimg
-//!
-//! TODO: falls doch Verzeichnis-Scan/Zufallsauswahl gebraucht wird (wie im
-//! alten loadFiles/getRany), das hier mit std.fs.Dir.walk() + std.Random
-//! nachbauen. Aktuell unnoetig, da main.zig nur -e <datei> unterstuetzt.
 
 const std = @import("std");
 const zigimg = @import("zigimg");
+const c = @import("c.zig").c;
 
 pub const supported_extensions = [_][]const u8{ "jpg", "jpeg", "png", "gif", "xpm", "bmp" };
 
-/// Endung einer Datei (ohne Punkt), lowercased. Entspricht altem getFileExt().
 pub fn fileExt(path: []const u8, buf: []u8) []const u8 {
     const dot = std.mem.lastIndexOfScalar(u8, path, '.') orelse return "";
     const raw = path[dot + 1 ..];
@@ -35,14 +21,11 @@ pub fn isSupportedExt(ext: []const u8) bool {
     return false;
 }
 
-/// Entspricht altem checkIfFile(). Nutzt statFile() statt cwd().access(), da
-/// wir zusaetzlich zur Existenz auch den Dateityp brauchen (kein Verzeichnis).
 pub fn checkIfFile(io: std.Io, path: []const u8) bool {
     const stat = std.Io.Dir.cwd().statFile(io, path, .{}) catch return false;
     return stat.kind == .file;
 }
 
-/// Entspricht altem checkIfDirectory().
 pub fn checkIfDirectory(io: std.Io, path: []const u8) bool {
     const stat = std.Io.Dir.cwd().statFile(io, path, .{}) catch return false;
     return stat.kind == .directory;
@@ -50,18 +33,9 @@ pub fn checkIfDirectory(io: std.Io, path: []const u8) bool {
 
 pub const LoadError = anyerror;
 
-/// Ein einzelner Frame, bereits garantiert im rgba32-Format (nicht
-/// premultiplied -- die Premultiplikation passiert erst in render.zig bei
-/// der Konvertierung nach ARGB fuer Imlib2, analog zu convert_rgba_to_argb()
-/// im Original, das ebenfalls von unpremultipliedem RGBA ausgeht, wie es
-/// MagickExportImagePixels(..., "RGBA", ...) liefert).
+/// Ein skaliertes und premultipliziertes ARGB-Frame.
 pub const Frame = struct {
-    pixels: []zigimg.color.Rgba32, // eigentuemlich, muss gefreed werden
-    width: usize,
-    height: usize,
-    /// Anzeigedauer in Millisekunden. GIF-Frames mit delay=0 werden wie im
-    /// alten Code (MagickGetImageDelay -> delay==0 -> 4 Hundertstelsekunden
-    /// = 40ms) auf einen sinnvollen Minimalwert angehoben.
+    pixels: []u32, // Fertige ARGB32 Pixeldaten für Imlib2/X11
     delay_ms: u32,
 };
 
@@ -77,72 +51,114 @@ pub const LoadedImage = struct {
     }
 };
 
-/// Laedt eine Bild-/GIF-Datei und liefert alle Frames als rgba32 zurueck.
-/// Entspricht dem MagickWand-Teil von WMWindowDock::DisplayImage() in
-/// wmgifdock.cpp (ReadImage + CoalesceImages + Iteration ueber alle Frames +
-/// ExportImagePixels als RGBA).
-///
-/// Wichtig, analog zu MagickCoalesceImages() im Original: bei animierten
-/// GIFs beschreibt jeder rohe Frame oft nur eine Teilregion des Bildes
-/// relativ zum vorherigen Frame (disposal methods). zigimg's
-/// image.animation.frames sind bereits vollstaendig zusammengesetzte
-/// (coalesced) Frames in Bildgroesse -- das entspricht exakt dem, was
-/// MagickCoalesceImages() im Original leistet, es muss hier also nichts
-/// zusaetzlich zusammengesetzt werden.
-pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []const u8) LoadError!LoadedImage {
+/// Schnelle Division durch 255 mittels Bitshift: (x * 257 + 257) >> 16
+inline fn div255(v: u32) u32 {
+    return (v * 257 + 257) >> 16;
+}
+
+/// Konvertiert RGBA32 Pixel in premultipliziertes ARGB32 Format.
+fn convertRgbaToArgb(src: []const zigimg.color.Rgba32, dst: []u32) void {
+    std.debug.assert(src.len == dst.len);
+    for (src, 0..) |px, i| {
+        const a: u32 = px.a;
+        if (a == 255) {
+            dst[i] = (0xFF << 24) | (@as(u32, px.r) << 16) | (@as(u32, px.g) << 8) | px.b;
+        } else if (a == 0) {
+            dst[i] = 0;
+        } else {
+            const r = div255(@as(u32, px.r) * a);
+            const g = div255(@as(u32, px.g) * a);
+            const b = div255(@as(u32, px.b) * a);
+            dst[i] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+    }
+}
+
+/// Lädt das Bild, skaliert alle Frames per Imlib2 auf `target_size x target_size`
+/// und liefert premultiplizierte ARGB32-Frames zurück.
+pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []const u8, target_size: u32) LoadError!LoadedImage {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var image = try zigimg.Image.fromFilePath(allocator, io_instance, path, read_buffer[0..]);
     defer image.deinit(allocator);
 
-    var frames = std.ArrayList(Frame).empty;
-    errdefer {
-        for (frames.items) |f| allocator.free(f.pixels);
-        frames.deinit(allocator);
+    var raw_frames = std.ArrayList(struct { rgba: []zigimg.color.Rgba32, delay_ms: u32 }).empty;
+    defer {
+        for (raw_frames.items) |f| allocator.free(f.rgba);
+        raw_frames.deinit(allocator);
     }
 
     if (image.isAnimation()) {
-        try frames.ensureTotalCapacityPrecise(allocator, image.animation.frames.items.len);
+        try raw_frames.ensureTotalCapacityPrecise(allocator, image.animation.frames.items.len);
         for (image.animation.frames.items) |*frame| {
             const rgba = try framePixelsToRgba32(allocator, &frame.pixels);
-            // GIF delay ist in Sekunden (f32) bei zigimg; altes Verhalten:
-            // delay==0 -> Minimalwert statt 0ms (sonst busy loop / Flackern).
             var delay_ms: u32 = @intFromFloat(@round(frame.duration * 1000.0));
-            if (delay_ms == 0) delay_ms = 40; // entspricht altem "delay = 4" (in 1/100s = 40ms)
-            frames.appendAssumeCapacity(.{
-                .pixels = rgba,
-                .width = image.width,
-                .height = image.height,
-                .delay_ms = delay_ms,
-            });
+            if (delay_ms == 0) delay_ms = 40;
+            raw_frames.appendAssumeCapacity(.{ .rgba = rgba, .delay_ms = delay_ms });
         }
     } else {
-        // Standbild: ein einziger "Frame" ohne Animation.
         const rgba = try framePixelsToRgba32(allocator, &image.pixels);
-        try frames.append(allocator, .{
-            .pixels = rgba,
-            .width = image.width,
-            .height = image.height,
-            .delay_ms = 0,
+        try raw_frames.append(allocator, .{ .rgba = rgba, .delay_ms = 0 });
+    }
+
+    if (raw_frames.items.len == 0) return LoadError.NoFrames;
+
+    // Frames direkt auf Zielgröße skalieren & nach ARGB konvertieren
+    var scaled_frames = std.ArrayList(Frame).empty;
+    errdefer {
+        for (scaled_frames.items) |f| allocator.free(f.pixels);
+        scaled_frames.deinit(allocator);
+    }
+    try scaled_frames.ensureTotalCapacityPrecise(allocator, raw_frames.items.len);
+
+    const pixel_count_target = @as(usize, target_size) * target_size;
+    const src_width = image.width;
+    const src_height = image.height;
+
+    // Buffer für ARGB-Konvertierung vor dem Skalieren
+    const src_argb = try allocator.alloc(u32, src_width * src_height);
+    defer allocator.free(src_argb);
+
+    for (raw_frames.items) |rf| {
+        convertRgbaToArgb(rf.rgba, src_argb);
+
+        const img_src = c.imlib_create_image_using_copied_data(@intCast(src_width), @intCast(src_height), src_argb.ptr);
+        if (img_src == null) return LoadError.OutOfMemory;
+        defer {
+            c.imlib_context_set_image(img_src);
+            c.imlib_free_image();
+        }
+
+        c.imlib_context_set_image(img_src);
+        const img_scaled = c.imlib_create_cropped_scaled_image(0, 0, @intCast(src_width), @intCast(src_height), @intCast(target_size), @intCast(target_size));
+        if (img_scaled == null) return LoadError.OutOfMemory;
+        defer {
+            c.imlib_context_set_image(img_scaled);
+            c.imlib_free_image();
+        }
+
+        c.imlib_context_set_image(img_scaled);
+        const scaled_pixels_ptr = c.imlib_image_get_data_for_reading_only();
+        if (scaled_pixels_ptr == null) return LoadError.OutOfMemory;
+
+        const frame_buf = try allocator.alloc(u32, pixel_count_target);
+        const scaled_slice: [*]const u32 = @ptrCast(@alignCast(scaled_pixels_ptr));
+        @memcpy(frame_buf, scaled_slice[0..pixel_count_target]);
+
+        scaled_frames.appendAssumeCapacity(.{
+            .pixels = frame_buf,
+            .delay_ms = rf.delay_ms,
         });
     }
 
-    if (frames.items.len == 0) return LoadError.NoFrames;
-
     return .{
-        .frames = try frames.toOwnedSlice(allocator),
-        .width = image.width,
-        .height = image.height,
+        .frames = try scaled_frames.toOwnedSlice(allocator),
+        .width = target_size,
+        .height = target_size,
     };
 }
 
-/// Konvertiert ein beliebiges PixelStorage (indexed1/2/4/8, rgba32, ...) in
-/// eine frisch allozierte rgba32-Kopie. Nutzt PixelFormatConverter direkt
-/// statt Image.convert(), weil Image.convert() nur image.pixels (= erster
-/// Frame) anfasst, nicht die einzelnen animation.frames Eintraege.
 fn framePixelsToRgba32(allocator: std.mem.Allocator, pixels: *zigimg.color.PixelStorage) LoadError![]zigimg.color.Rgba32 {
     if (std.meta.activeTag(pixels.*) == .rgba32) {
-        // Bereits im richtigen Format: kopieren, damit deinit() der
-        // Original-Frames uns nichts unter dem Allocator wegzieht.
         const src = pixels.rgba32;
         const copy = try allocator.alloc(zigimg.color.Rgba32, src.len);
         @memcpy(copy, src);
@@ -152,9 +168,5 @@ fn framePixelsToRgba32(allocator: std.mem.Allocator, pixels: *zigimg.color.Pixel
     const converted = zigimg.PixelFormatConverter.convert(allocator, pixels, .rgba32) catch {
         return LoadError.UnsupportedPixelFormat;
     };
-    // converted ist ein PixelStorage, wir wollen nur den rgba32-Slice
-    // rausziehen und den Rest der Struktur nicht extra freigeben, da
-    // PixelStorage fuer rgba32 keine zusaetzliche Allokation (z.B. Palette)
-    // haelt.
     return converted.rgba32;
 }
