@@ -17,9 +17,9 @@ A high-performance rewrite of **WMGifDock** (originally a fork of `wmimagedock`)
 ### 1. Via Nix
 
 ```sh
-nix build # (binary is placed in ./result/bin/wmgifdock)
-
 nix develop # Enter the development environment
+
+zig build -Doptimize=ReleaseSafe
 ```
 
 ### 2. Build From Source

@@ -45,7 +45,7 @@
 
             shellHook = ''
               echo "wmgifdock Zig dev environment active."
-              echo "Commands: 'zig build' or 'zig build run'"
+              echo "Execute: 'zig build -Doptimize=ReleaseSafe'"
             '';
           };
         }
