@@ -8,7 +8,6 @@ https://github.com/user-attachments/assets/38255974-24b3-40ef-b956-be42adff91d5
 ## Requirements
 
 * **Zig** (0.16.0)
-* `pkg-config`
 * `libX11`
 * `libXext`
 * `imlib2`
