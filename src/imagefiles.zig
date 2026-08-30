@@ -164,8 +164,6 @@ fn framePixelsToRgba32(allocator: std.mem.Allocator, pixels: *zigimg.color.Pixel
         return copy;
     }
 
-    const converted = zigimg.PixelFormatConverter.convert(allocator, pixels, .rgba32) catch {
-        return LoadError.UnsupportedPixelFormat;
-    };
+    const converted = try zigimg.PixelFormatConverter.convert(allocator, pixels, .rgba32);
     return converted.rgba32;
 }
