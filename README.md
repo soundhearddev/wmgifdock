@@ -2,7 +2,8 @@
 
 A high-performance rewrite of **WMGifDock** (originally a fork of `wmimagedock`) written in **Zig**.
 
-<video src="./example.mp4" controls></video>
+https://github.com/user-attachments/assets/38255974-24b3-40ef-b956-be42adff91d5
+
 
 ## Requirements
 
