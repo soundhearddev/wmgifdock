@@ -71,15 +71,8 @@ fn convertRgbaToArgb(src: []const zigimg.color.Rgba32, dst: []u32) void {
 
 pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []const u8, target_size: u32) LoadError!LoadedImage {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    std.debug.print("loading file: {s}\n", .{path});
-    var image = zigimg.Image.fromFilePath(allocator, io_instance, path, read_buffer[0..]) catch |err| {
-        std.debug.print("fromFilePath failed with: {s}\n", .{@errorName(err)});
-        return err;
-    };
+    var image = try zigimg.Image.fromFilePath(allocator, io_instance, path, read_buffer[0..]);
     defer image.deinit(allocator);
-    std.debug.print("loaded ok. isAnimation={}, width={d}, height={d}, top-level tag={s}\n", .{
-        image.isAnimation(), image.width, image.height, @tagName(std.meta.activeTag(image.pixels)),
-    });
 
     var raw_frames = std.ArrayList(struct { rgba: []zigimg.color.Rgba32, delay_ms: u32 }).empty;
     defer {
@@ -89,39 +82,14 @@ pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []
 
     if (image.isAnimation()) {
         try raw_frames.ensureTotalCapacityPrecise(allocator, image.animation.frames.items.len);
-        for (image.animation.frames.items, 0..) |*frame, frame_idx| {
-            // TMP
-            std.debug.print("frame {d}: tag={s}\n", .{ frame_idx, @tagName(std.meta.activeTag(frame.pixels)) });
-            switch (frame.pixels) {
-                .indexed1 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-                .indexed2 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-                .indexed4 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-                .indexed8 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-                .indexed16 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-                else => {},
-            }
-            const rgba = framePixelsToRgba32(allocator, &frame.pixels) catch |err| {
-                std.debug.print("framePixelsToRgba32 (frame {d}) failed with: {s}\n", .{ frame_idx, @errorName(err) });
-                return err;
-            };
+        for (image.animation.frames.items) |*frame| {
+            const rgba = try framePixelsToRgba32(allocator, &frame.pixels);
             var delay_ms: u32 = @intFromFloat(@round(frame.duration * 1000.0));
             if (delay_ms == 0) delay_ms = 40;
             raw_frames.appendAssumeCapacity(.{ .rgba = rgba, .delay_ms = delay_ms });
         }
     } else {
-        std.debug.print("non-animation path taken. tag={s}\n", .{@tagName(std.meta.activeTag(image.pixels))});
-        switch (image.pixels) {
-            .indexed1 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-            .indexed2 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-            .indexed4 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-            .indexed8 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-            .indexed16 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
-            else => {},
-        }
-        const rgba = framePixelsToRgba32(allocator, &image.pixels) catch |err| {
-            std.debug.print("framePixelsToRgba32 (non-anim) failed with: {s}\n", .{@errorName(err)});
-            return err;
-        };
+        const rgba = try framePixelsToRgba32(allocator, &image.pixels);
         try raw_frames.append(allocator, .{ .rgba = rgba, .delay_ms = 0 });
     }
 
