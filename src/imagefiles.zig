@@ -82,7 +82,15 @@ pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []
 
     if (image.isAnimation()) {
         try raw_frames.ensureTotalCapacityPrecise(allocator, image.animation.frames.items.len);
-        for (image.animation.frames.items) |*frame| {
+        for (image.animation.frames.items, 0..) |*frame, frame_idx| {
+            // TMP
+            std.debug.print("frame {d}: tag={s}\n", .{ frame_idx, @tagName(std.meta.activeTag(frame.pixels)) });
+            switch (frame.pixels) {
+                .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |storage| {
+                    std.debug.print("  palette len={d}\n", .{storage.palette.len});
+                },
+                else => {},
+            }
             const rgba = try framePixelsToRgba32(allocator, &frame.pixels);
             var delay_ms: u32 = @intFromFloat(@round(frame.duration * 1000.0));
             if (delay_ms == 0) delay_ms = 40;
@@ -156,8 +164,6 @@ fn framePixelsToRgba32(allocator: std.mem.Allocator, pixels: *zigimg.color.Pixel
         return copy;
     }
 
-    const converted = zigimg.PixelFormatConverter.convert(allocator, pixels, .rgba32) catch {
-        return LoadError.UnsupportedPixelFormat;
-    };
+    const converted = try zigimg.PixelFormatConverter.convert(allocator, pixels, .rgba32);
     return converted.rgba32;
 }
