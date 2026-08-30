@@ -1,0 +1,32 @@
+{ lib
+, stdenv
+, zig
+, libX11
+, libXext
+, imlib2
+}:
+
+stdenv.mkDerivation {
+  pname = "wmgifdock";
+  version = "0.1.0";
+
+  src = ./.;
+
+  nativeBuildInputs = [
+    zig
+  ];
+
+  buildInputs = [
+    libX11
+    libXext
+    imlib2
+  ];
+
+  meta = {
+    description = "GIF dock app for Window Maker";
+    homepage = "https://github.com/soundhearddev/wmgifdock";
+    license = lib.licenses.gpl2Only;
+    platforms = lib.platforms.linux;
+    mainProgram = "wmgifdock";
+  };
+}
