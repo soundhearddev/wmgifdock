@@ -1,6 +1,6 @@
 # WMGifDock
 
-A high-performance rewrite of **WMGifDock** (originally a fork of `wmimagedock`) written in **Zig**.
+A high-performance rewrite of **WMGifDock** (originally a fork of `wmimagedock`) in **Zig**.
 
 https://github.com/user-attachments/assets/38255974-24b3-40ef-b956-be42adff91d5
 
