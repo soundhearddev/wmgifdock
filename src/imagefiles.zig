@@ -86,9 +86,11 @@ pub fn loadAllFrames(allocator: std.mem.Allocator, io_instance: std.Io, path: []
             // TMP
             std.debug.print("frame {d}: tag={s}\n", .{ frame_idx, @tagName(std.meta.activeTag(frame.pixels)) });
             switch (frame.pixels) {
-                .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |storage| {
-                    std.debug.print("  palette len={d}\n", .{storage.palette.len});
-                },
+                .indexed1 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
+                .indexed2 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
+                .indexed4 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
+                .indexed8 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
+                .indexed16 => |storage| std.debug.print("  palette len={d}\n", .{storage.palette.len}),
                 else => {},
             }
             const rgba = try framePixelsToRgba32(allocator, &frame.pixels);
